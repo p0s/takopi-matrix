@@ -1,0 +1,45 @@
+[project]
+name = "takopi-matrix"
+version = "0.1.0"
+description = "Matrix transport backend for Takopi"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.14"
+dependencies = [
+    "takopi>=0.17.0",
+    "matrix-nio>=0.24",
+    "markdown-it-py",
+    "structlog>=25.5.0",
+    "tomli-w>=1.2.0",
+    "pydantic>=2.12.5",
+    "pydantic-settings>=2.12.0",
+    "anyio>=4.12.0",
+    "httpx>=0.28.1",
+    "questionary>=2.1.1",
+    "rich>=14.2.0",
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3 :: Only",
+    "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+e2ee = ["matrix-nio[e2e]>=0.24"]
+
+[project.urls]
+Homepage = "https://github.com/Zorro909/takopi-matrix"
+Repository = "https://github.com/Zorro909/takopi-matrix"
+Issues = "https://github.com/Zorro909/takopi-matrix/issues"
+
+[project.entry-points."takopi.transport_backends"]
+matrix = "takopi_matrix.backend:BACKEND"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/takopi_matrix"]
