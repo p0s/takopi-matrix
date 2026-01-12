@@ -19,7 +19,7 @@ import anyio
 import httpx
 import nio
 
-from ._compat import get_logger
+from takopi.logging import get_logger
 from .availability import NioAvailability, check_nio_availability
 from .types import MatrixFile, MatrixIncomingMessage, MatrixReaction, MatrixVoice
 

@@ -29,17 +29,12 @@ from takopi.api import (
     SetupResult,
 )
 
-# Non-public API imports (copied to _compat, deprecated)
-from ._compat import (
-    HOME_CONFIG_PATH,
-    ensure_table,
-    install_issue,
-    list_backends,
-    load_settings,
-    read_config,
-    suppress_logs,
-    write_config,
-)
+# Direct takopi module imports
+from takopi.backends_helpers import install_issue
+from takopi.config import HOME_CONFIG_PATH, ensure_table, read_config, write_config
+from takopi.engines import list_backends
+from takopi.logging import suppress_logs
+from takopi.settings import load_settings
 from .availability import check_basic_nio, check_e2ee_available
 
 
@@ -77,7 +72,7 @@ def _check_matrix_config(settings: Any, config_path: Path) -> list[SetupIssue]:
     if settings.transport != "matrix":
         return issues
 
-    transport_config = settings.transport_config("matrix", config_path=config_path)
+    transport_config = getattr(settings, "transports", {}).get("matrix", {})
 
     if not transport_config.get("homeserver"):
         issues.append(config_issue(config_path, title=_CONFIGURE_MATRIX_TITLE))

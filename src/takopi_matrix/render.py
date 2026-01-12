@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from markdown_it import MarkdownIt
 
-from ._compat import MarkdownParts, assemble_markdown_parts
+from takopi.markdown import MarkdownParts, assemble_markdown_parts
 
 _MD_RENDERER = MarkdownIt("commonmark", {"html": False})
 

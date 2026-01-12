@@ -34,23 +34,14 @@ from takopi.api import (
     handle_message,
 )
 
-# Non-public API imports (copied to _compat, deprecated)
-from ._compat import (
-    RESERVED_COMMAND_IDS,
-    MarkdownFormatter,
-    MarkdownParts,
-    ProgressState,
-    ProgressTracker,
-    ThreadJob,
-    ThreadScheduler,
-    bind_run_context,
-    clear_context,
-    get_command,
-    get_logger,
-    list_command_ids,
-    reset_run_base_dir,
-    set_run_base_dir,
-)
+# Direct takopi module imports
+from takopi.commands import get_command, list_command_ids
+from takopi.ids import RESERVED_COMMAND_IDS
+from takopi.logging import bind_run_context, clear_context, get_logger
+from takopi.markdown import MarkdownFormatter, MarkdownParts
+from takopi.progress import ProgressState, ProgressTracker
+from takopi.scheduler import ThreadJob, ThreadScheduler
+from takopi.utils.paths import reset_run_base_dir, set_run_base_dir
 from .client import (
     MatrixClient,
     MatrixRetryAfter,

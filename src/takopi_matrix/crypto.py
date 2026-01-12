@@ -12,7 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ._compat import get_logger
+from takopi.logging import get_logger
 from .availability import NioAvailability, check_e2ee_available, check_nio_availability
 
 if TYPE_CHECKING:
