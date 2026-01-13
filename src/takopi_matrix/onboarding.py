@@ -116,7 +116,16 @@ def _check_matrix_config(settings: Any, config_path: Path) -> list[SetupIssue]:
     if settings.transport != "matrix":
         return issues
 
-    transport_config = getattr(settings, "transports", {}).get("matrix", {})
+    transports = getattr(settings, "transports", None)
+    if transports is None:
+        transport_config = {}
+    elif hasattr(transports, "model_extra"):
+        # Pydantic v2 model with extra fields
+        transport_config = transports.model_extra.get("matrix", {})
+    elif isinstance(transports, dict):
+        transport_config = transports.get("matrix", {})
+    else:
+        transport_config = {}
 
     if not transport_config.get("homeserver"):
         issues.append(config_issue(config_path, title=_CONFIGURE_MATRIX_TITLE))
