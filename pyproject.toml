@@ -7,7 +7,7 @@ license = { file = "LICENSE" }
 requires-python = ">=3.14"
 dependencies = [
     "takopi>=0.16.0",
-    "matrix-nio>=0.24",
+    "matrix-nio[e2e]>=0.24",
     "markdown-it-py",
     "structlog>=25.5.0",
     "tomli-w>=1.2.0",
@@ -27,7 +27,6 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-e2ee = ["matrix-nio[e2e]>=0.24"]
 dev = ["pytest>=8.0", "anyio[trio]>=4.0"]
 
 [project.urls]

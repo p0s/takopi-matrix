@@ -20,7 +20,6 @@ from .bridge import (
     MatrixVoiceTranscriptionConfig,
     run_main_loop,
 )
-from .availability import check_nio_availability
 from .client import MatrixClient
 from .onboarding import check_setup, interactive_setup
 
@@ -195,15 +194,6 @@ class MatrixBackend(TransportBackend):
             startup_pwd=os.getcwd(),
         )
 
-        # Check nio availability once at startup
-        nio_availability = check_nio_availability(strict_e2ee=True)
-
-        if not nio_availability.basic:
-            raise RuntimeError(
-                "matrix-nio is required for Matrix transport. "
-                "Install with: pip install matrix-nio"
-            )
-
         client = MatrixClient(
             homeserver=homeserver,
             user_id=user_id,
@@ -211,7 +201,6 @@ class MatrixBackend(TransportBackend):
             password=password,
             device_id=device_id,
             crypto_store_path=crypto_store_path,
-            _nio_availability=nio_availability,
         )
 
         transport = MatrixTransport(client)
@@ -225,9 +214,7 @@ class MatrixBackend(TransportBackend):
 
         voice_transcription = _build_voice_transcription_config(transport_config)
         file_download = _build_file_download_config(transport_config)
-        send_startup_message = bool(
-            transport_config.get("send_startup_message", True)
-        )
+        send_startup_message = bool(transport_config.get("send_startup_message", True))
 
         cfg = MatrixBridgeConfig(
             client=client,

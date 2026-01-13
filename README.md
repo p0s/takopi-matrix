@@ -6,15 +6,25 @@ Extracted from the main takopi repository as a standalone plugin.
 
 ## Installation
 
+### Prerequisites
+
+This package requires **libolm** (version 3.x) for end-to-end encryption:
+
+| Platform | Command |
+|----------|---------|
+| Debian/Ubuntu | `sudo apt-get install libolm-dev` |
+| Fedora | `sudo dnf install libolm-devel` |
+| Arch Linux | `sudo pacman -S libolm` |
+| openSUSE | `sudo zypper install libolm-devel` |
+| macOS (Homebrew) | `brew install libolm` |
+
+### Install
+
 ```bash
 pip install takopi-matrix
 ```
 
-For end-to-end encryption support:
-
-```bash
-pip install takopi-matrix[e2ee]
-```
+E2EE (end-to-end encryption) support is included by default.
 
 ## Configuration
 
@@ -39,7 +49,7 @@ room_ids = ["!roomid:example.org"]
 ## Features
 
 - Matrix protocol support via matrix-nio
-- Optional end-to-end encryption (E2EE)
+- End-to-end encryption (E2EE) included by default
 - Voice message transcription (via OpenAI)
 - File download support
 - Interactive onboarding wizard

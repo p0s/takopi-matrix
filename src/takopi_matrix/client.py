@@ -20,7 +20,6 @@ import httpx
 import nio
 
 from takopi.logging import get_logger
-from .availability import NioAvailability, check_nio_availability
 from .types import MatrixFile, MatrixIncomingMessage, MatrixReaction, MatrixVoice
 
 logger = get_logger(__name__)
@@ -418,7 +417,9 @@ def _build_edit_content(
     }
 
 
-def _require_login(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
+def _require_login(
+    func: Callable[..., Awaitable[Any]],
+) -> Callable[..., Awaitable[Any]]:
     """
     Decorator ensuring Matrix client is logged in before executing method.
 
@@ -466,21 +467,7 @@ class MatrixClient:
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], Awaitable[None]] = anyio.sleep,
         interval: float = 0.1,
-        _nio_availability: NioAvailability | None = None,
     ) -> None:
-        # Cache nio availability (checked once)
-        self._nio_availability = (
-            _nio_availability
-            if _nio_availability is not None
-            else check_nio_availability()
-        )
-
-        # Validate basic nio is available
-        if not self._nio_availability.basic:
-            raise RuntimeError(
-                "matrix-nio is required. Install with: pip install matrix-nio"
-            )
-
         self.homeserver = homeserver.rstrip("/")
         self.user_id = user_id
         self._access_token = access_token
@@ -508,8 +495,8 @@ class MatrixClient:
 
     @property
     def e2ee_available(self) -> bool:
-        """Check if E2EE dependencies are available (cached)."""
-        return self._nio_availability.e2ee
+        """Check if E2EE dependencies are available."""
+        return hasattr(nio, "crypto")
 
     def _default_sync_store_path(self) -> Path:
         """Get the default path for storing the sync token."""
@@ -1404,7 +1391,9 @@ def parse_room_message(
     own_user_id: str,
 ) -> MatrixIncomingMessage | None:
     """Parse a nio RoomMessageText event into MatrixIncomingMessage."""
-    common = _parse_event_common(event, room_id, allowed_room_ids=allowed_room_ids, own_user_id=own_user_id)
+    common = _parse_event_common(
+        event, room_id, allowed_room_ids=allowed_room_ids, own_user_id=own_user_id
+    )
     if not common:
         return None
 
@@ -1433,7 +1422,9 @@ def parse_room_media(
     own_user_id: str,
 ) -> MatrixIncomingMessage | None:
     """Parse a nio media event into MatrixIncomingMessage with attachments."""
-    common = _parse_event_common(event, room_id, allowed_room_ids=allowed_room_ids, own_user_id=own_user_id)
+    common = _parse_event_common(
+        event, room_id, allowed_room_ids=allowed_room_ids, own_user_id=own_user_id
+    )
     if not common:
         return None
 
@@ -1483,7 +1474,9 @@ def parse_room_audio(
     own_user_id: str,
 ) -> MatrixIncomingMessage | None:
     """Parse a nio audio event into MatrixIncomingMessage with voice."""
-    common = _parse_event_common(event, room_id, allowed_room_ids=allowed_room_ids, own_user_id=own_user_id)
+    common = _parse_event_common(
+        event, room_id, allowed_room_ids=allowed_room_ids, own_user_id=own_user_id
+    )
     if not common:
         return None
 

@@ -35,7 +35,55 @@ from takopi.config import HOME_CONFIG_PATH, ensure_table, read_config, write_con
 from takopi.engines import list_backends
 from takopi.logging import suppress_logs
 from takopi.settings import load_settings
-from .availability import check_basic_nio, check_e2ee_available
+
+import nio
+
+
+def _check_libolm_available() -> bool:
+    """Check if libolm is available (E2EE support works)."""
+    try:
+        from nio.crypto import Olm  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
+def _libolm_install_issue() -> SetupIssue:
+    """Create setup issue for missing libolm."""
+    import platform
+
+    system = platform.system().lower()
+
+    if system == "darwin":
+        install_cmd = "brew install libolm"
+    elif system == "linux":
+        # Try to detect distro
+        try:
+            with open("/etc/os-release") as f:
+                os_release = f.read().lower()
+        except FileNotFoundError:
+            os_release = ""
+
+        if "ubuntu" in os_release or "debian" in os_release:
+            install_cmd = "sudo apt-get install libolm-dev"
+        elif "fedora" in os_release or "rhel" in os_release or "centos" in os_release:
+            install_cmd = "sudo dnf install libolm-devel"
+        elif "arch" in os_release:
+            install_cmd = "sudo pacman -S libolm"
+        elif "opensuse" in os_release or "suse" in os_release:
+            install_cmd = "sudo zypper install libolm-devel"
+        else:
+            install_cmd = "Install libolm-dev (or libolm-devel) for your distro"
+    elif system == "windows":
+        install_cmd = "Build libolm from source (see docs)"
+    else:
+        install_cmd = "Install libolm for your platform"
+
+    return SetupIssue(
+        "install libolm (E2EE dependency)",
+        (f"   {install_cmd}",),
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,10 +107,6 @@ _CONFIGURE_MATRIX_TITLE = "configure matrix"
 
 def config_issue(path: Path, *, title: str) -> SetupIssue:
     return SetupIssue(title, (f"   {_display_path(path)}",))
-
-
-# Replaced with check_basic_nio from availability module
-# All calls to _check_matrix_nio_available() now use check_basic_nio()
 
 
 def _check_matrix_config(settings: Any, config_path: Path) -> list[SetupIssue]:
@@ -109,13 +153,8 @@ def check_setup(
     if shutil.which(cmd) is None:
         backend_issues.append(install_issue(cmd, backend.install_cmd))
 
-    if not check_basic_nio():
-        issues.append(
-            SetupIssue(
-                "install matrix-nio",
-                ("   pip install matrix-nio",),
-            )
-        )
+    if not _check_libolm_available():
+        issues.append(_libolm_install_issue())
 
     try:
         settings, config_path = load_settings()
@@ -176,8 +215,6 @@ def _render_config(
     return "\n".join(lines) + "\n"
 
 
-
-
 async def _discover_homeserver(server_name: str) -> str:
     """
     Discover homeserver URL using .well-known.
@@ -217,11 +254,6 @@ async def _test_login(
 
     Returns (success, access_token, device_id, error_message).
     """
-    try:
-        import nio
-    except ImportError:
-        return False, None, None, "matrix-nio not installed"
-
     client = nio.AsyncClient(homeserver, user_id)
     try:
         response = await client.login(password=password, device_name="Takopi")
@@ -242,11 +274,6 @@ async def _test_token(
     access_token: str,
 ) -> bool:
     """Test if access token is valid."""
-    try:
-        import nio
-    except ImportError:
-        return False
-
     client = nio.AsyncClient(homeserver, user_id)
     client.access_token = access_token
     client.user_id = user_id
@@ -273,11 +300,6 @@ async def _fetch_room_invites(
     access_token: str,
 ) -> list[RoomInvite]:
     """Fetch pending room invites."""
-    try:
-        import nio
-    except ImportError:
-        return []
-
     client = nio.AsyncClient(homeserver, user_id)
     client.access_token = access_token
     client.user_id = user_id
@@ -314,11 +336,6 @@ async def _accept_room_invite(
     room_id: str,
 ) -> bool:
     """Accept a room invite."""
-    try:
-        import nio
-    except ImportError:
-        return False
-
     client = nio.AsyncClient(homeserver, user_id)
     client.access_token = access_token
     client.user_id = user_id
@@ -338,11 +355,6 @@ async def _wait_for_room(
     access_token: str,
 ) -> str | None:
     """Wait for a message in any room and return the room_id."""
-    try:
-        import nio
-    except ImportError:
-        return None
-
     client = nio.AsyncClient(homeserver, user_id)
     client.access_token = access_token
     client.user_id = user_id
@@ -379,11 +391,6 @@ async def _send_confirmation(
     room_id: str,
 ) -> bool:
     """Send confirmation message to room."""
-    try:
-        import nio
-    except ImportError:
-        return False
-
     client = nio.AsyncClient(homeserver, user_id)
     client.access_token = access_token
     client.user_id = user_id
@@ -584,12 +591,6 @@ def interactive_setup(*, force: bool) -> bool:
     console = Console()
     config_path = HOME_CONFIG_PATH
 
-    if not check_basic_nio():
-        console.print(
-            "[red]matrix-nio is required.[/]\ninstall with: pip install matrix-nio"
-        )
-        return False
-
     if config_path.exists() and not force:
         console.print(
             f"config already exists at {_display_path(config_path)}. "
@@ -773,26 +774,15 @@ def interactive_setup(*, force: bool) -> bool:
 
         console.print("\nstep 4.5: encryption support")
 
-        # Check E2EE availability
-        if not check_e2ee_available(strict=False):
-            console.print("  [yellow]E2EE support not detected[/]")
-            console.print("  encrypted rooms require matrix-nio[e2e]")
-
-            install_e2ee = _confirm(
-                "install E2EE support? (recommended for encrypted rooms)",
-                default=True,
-            )
-
-            if install_e2ee:
-                console.print("\n  run this command:")
-                console.print("  [cyan]pip install matrix-nio[e2e][/]\n")
-                console.print("  after installation, restart setup with --onboard")
-                return False  # Exit to allow user to install
-            else:
-                console.print("  [yellow]skipping E2EE support[/]")
-                console.print(
-                    "  (you can install later with: pip install matrix-nio[e2e])"
-                )
+        # Check libolm availability (required for E2EE)
+        if not _check_libolm_available():
+            console.print("  [red]libolm not detected[/]")
+            console.print("  E2EE requires the libolm system library")
+            issue = _libolm_install_issue()
+            for hint in issue.hints:
+                console.print(f"  {hint}")
+            console.print("\n  after installation, restart setup with --onboard")
+            return False
         else:
             console.print("  [green]E2EE support detected[/] ✓")
 

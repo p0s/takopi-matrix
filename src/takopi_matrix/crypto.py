@@ -12,8 +12,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import nio
+
 from takopi.logging import get_logger
-from .availability import NioAvailability, check_e2ee_available, check_nio_availability
 
 if TYPE_CHECKING:
     pass
@@ -25,13 +26,9 @@ def is_e2ee_available() -> bool:
     """
     Check if E2EE dependencies are available.
 
-    DEPRECATED: Use check_e2ee_available() from availability module.
-    Kept for backward compatibility.
-
-    Returns True if matrix-nio was installed with E2EE support (matrix-nio[e2e]).
-    This requires libolm to be installed on the system.
+    Returns True if matrix-nio[e2e] is installed with libolm.
     """
-    return check_e2ee_available(strict=True)
+    return hasattr(nio, "crypto")
 
 
 def get_default_crypto_store_path() -> Path:
@@ -57,22 +54,15 @@ class CryptoManager:
     def __init__(
         self,
         store_path: Path | None = None,
-        _nio_availability: NioAvailability | None = None,
     ) -> None:
         self.store_path = store_path or get_default_crypto_store_path()
         self._initialized = False
-
-        # Cache nio availability (checked once)
-        self._nio_availability = (
-            _nio_availability
-            if _nio_availability is not None
-            else check_nio_availability(strict_e2ee=True)
-        )
+        self._e2ee_available = hasattr(nio, "crypto")
 
     @property
     def available(self) -> bool:
-        """Check if E2EE is available (cached)."""
-        return self._nio_availability.e2ee
+        """Check if E2EE is available."""
+        return self._e2ee_available
 
     def ensure_store(self) -> None:
         """Ensure the crypto store directory exists."""
@@ -90,8 +80,6 @@ class CryptoManager:
             return False
 
         try:
-            import nio
-
             if not isinstance(client, nio.AsyncClient):
                 return False
 
@@ -121,8 +109,6 @@ class CryptoManager:
             return False
 
         try:
-            import nio
-
             if not isinstance(client, nio.AsyncClient):
                 return False
 
@@ -150,8 +136,6 @@ class CryptoManager:
             return None
 
         try:
-            import nio
-
             if not isinstance(client, nio.AsyncClient):
                 return None
 
@@ -196,8 +180,6 @@ class CryptoManager:
             return False
 
         try:
-            import nio
-
             if not isinstance(client, nio.AsyncClient):
                 return False
 
@@ -238,8 +220,6 @@ class CryptoManager:
             return False
 
         try:
-            import nio
-
             if not isinstance(client, nio.AsyncClient):
                 return False
 
@@ -280,8 +260,6 @@ class CryptoManager:
             return None
 
         try:
-            import nio
-
             if not isinstance(client, nio.AsyncClient):
                 return None
 
@@ -321,8 +299,6 @@ class CryptoManager:
             return False
 
         try:
-            import nio
-
             if not isinstance(client, nio.AsyncClient):
                 return False
 
