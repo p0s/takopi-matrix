@@ -194,7 +194,9 @@ async def test_process_attachments_single(tmp_path: Path) -> None:
     client = FakeMatrixClient()
     client.download_responses["mxc://example.org/file1"] = b"content1"
 
-    attachments = [make_matrix_file(mxc_url="mxc://example.org/file1", filename="a.txt")]
+    attachments = [
+        make_matrix_file(mxc_url="mxc://example.org/file1", filename="a.txt")
+    ]
 
     text, errors = await process_attachments(
         client,  # type: ignore[arg-type]

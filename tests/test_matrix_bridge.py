@@ -210,9 +210,7 @@ def test_presenter_render_final_cancelled() -> None:
     presenter = MatrixPresenter()
     state = _make_progress_state()
 
-    result = presenter.render_final(
-        state, elapsed_s=2.0, status="cancelled", answer=""
-    )
+    result = presenter.render_final(state, elapsed_s=2.0, status="cancelled", answer="")
 
     assert isinstance(result, RenderedMessage)
     # Status should be reflected somehow
@@ -272,14 +270,16 @@ class FakeMatrixClient:
     ) -> dict[str, str] | None:
         event_id = f"$sent{self._next_event_id}:example.org"
         self._next_event_id += 1
-        self.send_calls.append({
-            "room_id": room_id,
-            "body": body,
-            "formatted_body": formatted_body,
-            "reply_to_event_id": reply_to_event_id,
-            "disable_notification": disable_notification,
-            "wait": wait,
-        })
+        self.send_calls.append(
+            {
+                "room_id": room_id,
+                "body": body,
+                "formatted_body": formatted_body,
+                "reply_to_event_id": reply_to_event_id,
+                "disable_notification": disable_notification,
+                "wait": wait,
+            }
+        )
         return {"event_id": event_id}
 
     async def edit_message(
@@ -291,13 +291,15 @@ class FakeMatrixClient:
         *,
         wait: bool = True,
     ) -> dict[str, str] | None:
-        self.edit_calls.append({
-            "room_id": room_id,
-            "event_id": event_id,
-            "body": body,
-            "formatted_body": formatted_body,
-            "wait": wait,
-        })
+        self.edit_calls.append(
+            {
+                "room_id": room_id,
+                "event_id": event_id,
+                "body": body,
+                "formatted_body": formatted_body,
+                "wait": wait,
+            }
+        )
         return {"event_id": event_id}
 
     async def redact_message(
@@ -470,12 +472,14 @@ class FakeMatrixTransport:
     ) -> MessageRef:
         ref = MessageRef(channel_id=channel_id, message_id=f"$evt{self._next_id}")
         self._next_id += 1
-        self.send_calls.append({
-            "ref": ref,
-            "channel_id": channel_id,
-            "message": message,
-            "options": options,
-        })
+        self.send_calls.append(
+            {
+                "ref": ref,
+                "channel_id": channel_id,
+                "message": message,
+                "options": options,
+            }
+        )
         if (
             self.progress_ref is None
             and options is not None

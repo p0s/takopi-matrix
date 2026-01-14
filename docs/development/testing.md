@@ -281,15 +281,3 @@ uv run pytest tests/test_failing.py --pdb
 ```bash
 uv run pytest tests/ --lf
 ```
-
-## CI Integration
-
-Tests run automatically on:
-- Pull requests
-- Pushes to main
-
-The CI pipeline:
-1. Checks formatting (`ruff format --check`)
-2. Runs linter (`ruff check`)
-3. Runs type checker (pyright)
-4. Runs tests (`pytest`)

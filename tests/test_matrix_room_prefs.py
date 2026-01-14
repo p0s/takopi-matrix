@@ -44,9 +44,7 @@ class TestRoomPrefsStore:
         assert result is None
 
     @pytest.mark.anyio
-    async def test_set_and_get_default_engine(
-        self, room_prefs: RoomPrefsStore
-    ) -> None:
+    async def test_set_and_get_default_engine(self, room_prefs: RoomPrefsStore) -> None:
         """Can set and retrieve engine for a room."""
         room_id = "!room:example.org"
         await room_prefs.set_default_engine(room_id, "opus")
