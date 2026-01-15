@@ -47,3 +47,4 @@ class MatrixBridgeConfig:
     send_startup_message: bool = True
     room_prefs: RoomPrefsStore | None = None
     room_project_map: RoomProjectMap | None = None
+    config_path: Path | None = None
