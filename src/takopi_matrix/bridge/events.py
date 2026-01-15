@@ -459,6 +459,85 @@ async def _process_room_timeline(
         await cfg.client.trust_room_devices(room_id)
 
 
+async def _process_invite_events(
+    cfg: MatrixBridgeConfig,
+    response: object,
+    *,
+    allowed_room_ids: set[str],
+) -> list[str]:
+    """Process room invites and auto-join from allowed users.
+
+    Returns list of newly joined room_ids.
+    """
+    rooms = getattr(response, "rooms", None)
+    if rooms is None:
+        return []
+
+    invite = getattr(rooms, "invite", {})
+    if not invite:
+        return []
+
+    new_rooms: list[str] = []
+
+    for room_id, invite_info in invite.items():
+        # Extract inviter from invite state events
+        inviter: str | None = None
+        room_name: str | None = None
+
+        invite_state = getattr(invite_info, "invite_state", [])
+        for event in invite_state:
+            if hasattr(event, "sender"):
+                inviter = event.sender
+            if hasattr(event, "name"):
+                room_name = event.name
+
+        logger.debug(
+            "matrix.invite.received",
+            room_id=room_id,
+            inviter=inviter,
+            room_name=room_name,
+        )
+
+        # Check if inviter is allowed
+        if cfg.user_allowlist is not None and inviter not in cfg.user_allowlist:
+            logger.debug(
+                "matrix.invite.sender_not_allowed",
+                room_id=room_id,
+                inviter=inviter,
+                allowlist=list(cfg.user_allowlist),
+            )
+            continue
+
+        # Auto-join the room
+        try:
+            success = await cfg.client.join_room(room_id)
+            if success:
+                logger.info(
+                    "matrix.invite.auto_joined",
+                    room_id=room_id,
+                    inviter=inviter,
+                    room_name=room_name,
+                )
+                allowed_room_ids.add(room_id)
+                new_rooms.append(room_id)
+            else:
+                logger.warning(
+                    "matrix.invite.join_failed",
+                    room_id=room_id,
+                    inviter=inviter,
+                )
+        except Exception as exc:
+            logger.error(
+                "matrix.invite.join_error",
+                room_id=room_id,
+                inviter=inviter,
+                error=str(exc),
+                error_type=exc.__class__.__name__,
+            )
+
+    return new_rooms
+
+
 async def _process_sync_response(
     cfg: MatrixBridgeConfig,
     response: object,

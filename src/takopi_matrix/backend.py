@@ -240,6 +240,7 @@ class MatrixBackend(TransportBackend):
             send_startup_message=send_startup_message,
             room_prefs=room_prefs,
             room_project_map=room_project_map,
+            config_path=config_path,
         )
 
         # anyio.run only accepts positional args, so pass as a lambda

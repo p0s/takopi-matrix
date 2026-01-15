@@ -29,6 +29,7 @@ from .commands import _dispatch_command, _parse_slash_command
 from .config import MatrixBridgeConfig
 from .events import (
     ExponentialBackoff,
+    _process_invite_events,
     _process_sync_response,
     _run_engine,
     _send_plain,
@@ -37,6 +38,73 @@ from .events import (
 from .transcription import _process_file_attachments, _transcribe_voice
 
 logger = get_logger(__name__)
+
+
+async def _persist_new_rooms(room_ids: list[str], config_path: object) -> None:
+    """Persist newly joined room IDs to the config file.
+
+    Uses tomlkit to preserve formatting.
+    """
+    from pathlib import Path
+
+    if config_path is None or not room_ids:
+        return
+
+    # Ensure we have a Path
+    if not isinstance(config_path, Path):
+        return
+
+    try:
+        import tomlkit
+    except ImportError:
+        logger.warning("matrix.config.tomlkit_not_available")
+        return
+
+    try:
+        # Read current config
+        config_text = config_path.read_text()
+        config = tomlkit.parse(config_text)
+
+        # Get current room_ids
+        transports = config.get("transports", {})
+        matrix = transports.get("matrix", {})
+        current_rooms = list(matrix.get("room_ids", []))
+
+        # Add new rooms (avoid duplicates)
+        added = []
+        for room_id in room_ids:
+            if room_id not in current_rooms:
+                current_rooms.append(room_id)
+                added.append(room_id)
+
+        if not added:
+            return
+
+        # Update config
+        if "transports" not in config:
+            config["transports"] = tomlkit.table()
+        if "matrix" not in config["transports"]:
+            config["transports"]["matrix"] = tomlkit.table()
+
+        config["transports"]["matrix"]["room_ids"] = current_rooms
+
+        # Write back atomically
+        temp_path = config_path.with_suffix(".toml.tmp")
+        temp_path.write_text(tomlkit.dumps(config))
+        temp_path.rename(config_path)
+
+        logger.info(
+            "matrix.config.rooms_updated",
+            added_rooms=added,
+            total_rooms=len(current_rooms),
+        )
+
+    except Exception as exc:
+        logger.error(
+            "matrix.config.update_failed",
+            error=str(exc),
+            error_type=exc.__class__.__name__,
+        )
 
 
 async def _send_startup(cfg: MatrixBridgeConfig) -> None:
@@ -85,6 +153,15 @@ async def _sync_loop(
                 continue
 
             backoff.reset()
+
+            # Process invites first (may add to allowed_room_ids)
+            new_rooms = await _process_invite_events(
+                cfg,
+                response,
+                allowed_room_ids=allowed_room_ids,
+            )
+            if new_rooms:
+                await _persist_new_rooms(new_rooms, cfg.config_path)
 
             await _process_sync_response(
                 cfg,
