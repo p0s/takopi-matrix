@@ -1033,7 +1033,7 @@ wheels = [
 
 [[package]]
 name = "takopi"
-version = "0.19.0"
+version = "0.20.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1051,9 +1051,9 @@ dependencies = [
     { name = "typer" },
     { name = "watchfiles" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/97/82/a0da6ce9230f2080219a386b7a56cf02b4b8926a5fa3100fa6ecdc224a59/takopi-0.19.0.tar.gz", hash = "sha256:7566798e7e8b121db524b497c82fcabd6859f1b6de468fcd81716c13b92e48e0", size = 103395, upload-time = "2026-01-15T01:47:58.69Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/67/d4/f13c499100c702efb4fc987335d94d82c80acec686269ce0bafe1fc41abe/takopi-0.20.0.tar.gz", hash = "sha256:1b50a91405daf60dbe0487fbad6c71fb460070ff77247fa82445e2b08b623dab", size = 111693, upload-time = "2026-01-15T22:08:37.007Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/16/11/6b9df235c56bd645b4c75bd25bf5540de919d5161cf270ae350da9a4669c/takopi-0.19.0-py3-none-any.whl", hash = "sha256:a82135b3792136f524f4c2fcaa2f0c45a0f97af0fa3a449793f6e69fd0cd32d6", size = 139811, upload-time = "2026-01-15T01:47:56.831Z" },
+    { url = "https://files.pythonhosted.org/packages/89/fe/98768814bdf22d6d60b66f3a2112901260a872a3fbbcbbc5b984d9d9dda5/takopi-0.20.0-py3-none-any.whl", hash = "sha256:dd180c5d3823358b0ce1af9b259dae3b7a9e4629854bc4b1a9505ccb53ef0027", size = 152775, upload-time = "2026-01-15T22:08:35.5Z" },
 ]
 
 [[package]]
@@ -1094,7 +1094,7 @@ requires-dist = [
     { name = "questionary", specifier = ">=2.1.1" },
     { name = "rich", specifier = ">=14.2.0" },
     { name = "structlog", specifier = ">=25.5.0" },
-    { name = "takopi", specifier = ">=0.19.0" },
+    { name = "takopi", specifier = ">=0.20.0" },
     { name = "tomli-w", specifier = ">=1.2.0" },
     { name = "tomlkit", specifier = ">=0.13.0" },
 ]
