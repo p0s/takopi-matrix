@@ -4,6 +4,7 @@ from .config import (
     MatrixBridgeConfig,
     MatrixVoiceTranscriptionConfig,
     MatrixFileDownloadConfig,
+    SessionMode,
 )
 from .presenter import MatrixPresenter
 from .transport import MatrixTransport
@@ -16,6 +17,7 @@ __all__ = [
     "MatrixBridgeConfig",
     "MatrixVoiceTranscriptionConfig",
     "MatrixFileDownloadConfig",
+    "SessionMode",
     # Presenter
     "MatrixPresenter",
     # Transport

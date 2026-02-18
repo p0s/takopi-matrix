@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 
 import anyio
 
@@ -9,6 +10,7 @@ from takopi.api import (
     DirectiveError,
     MessageRef,
     RenderedMessage,
+    ResumeToken,
     RunningTasks,
 )
 from takopi.api import list_command_ids, RESERVED_COMMAND_IDS, get_logger
@@ -43,6 +45,49 @@ logger = get_logger(__name__)
 # Queue buffer sizes for message processing
 MESSAGE_QUEUE_SIZE = 100  # Max buffered messages before backpressure
 REACTION_QUEUE_SIZE = 100  # Max buffered reactions before backpressure
+
+
+@dataclass(frozen=True, slots=True)
+class _SessionScope:
+    room_id: str
+    sender: str
+    thread_root_event_id: str | None
+
+
+async def _lookup_session_resume(
+    *,
+    cfg: MatrixBridgeConfig,
+    scope: _SessionScope,
+    engine: str,
+) -> ResumeToken | None:
+    if cfg.session_mode != "chat":
+        return None
+    if scope.thread_root_event_id is not None and cfg.thread_state is not None:
+        return await cfg.thread_state.get_session_resume(
+            scope.room_id, scope.thread_root_event_id, engine
+        )
+    if cfg.chat_sessions is not None:
+        return await cfg.chat_sessions.get_session_resume(
+            scope.room_id, scope.sender, engine
+        )
+    return None
+
+
+async def _store_session_resume(
+    *,
+    cfg: MatrixBridgeConfig,
+    scope: _SessionScope,
+    token: ResumeToken,
+) -> None:
+    if cfg.session_mode != "chat":
+        return
+    if scope.thread_root_event_id is not None and cfg.thread_state is not None:
+        await cfg.thread_state.set_session_resume(
+            scope.room_id, scope.thread_root_event_id, token
+        )
+        return
+    if cfg.chat_sessions is not None:
+        await cfg.chat_sessions.set_session_resume(scope.room_id, scope.sender, token)
 
 
 async def _is_reply_to_bot_message(
@@ -318,6 +363,7 @@ async def run_main_loop(
         ](max_buffer_size=REACTION_QUEUE_SIZE)
 
         async with anyio.create_task_group() as tg:
+            session_scopes_by_msg: dict[tuple[str, str], _SessionScope] = {}
 
             async def run_job(
                 room_id: str,
@@ -328,7 +374,26 @@ async def run_main_loop(
                 reply_ref: MessageRef | None = None,
                 on_thread_known=None,
                 engine_override=None,
+                session_scope: _SessionScope | None = None,
             ) -> None:
+                if on_thread_known is not None or session_scope is not None:
+
+                    async def wrapped_on_thread_known(
+                        token: ResumeToken,
+                        done: anyio.Event,
+                    ) -> None:
+                        if on_thread_known is not None:
+                            await on_thread_known(token, done)
+                        if session_scope is not None:
+                            await _store_session_resume(
+                                cfg=cfg,
+                                scope=session_scope,
+                                token=token,
+                            )
+
+                else:
+                    wrapped_on_thread_known = None
+
                 await cfg.client.send_typing(room_id, typing=True)
                 try:
                     await _run_engine(
@@ -341,13 +406,17 @@ async def run_main_loop(
                         resume_token=resume_token,
                         context=context,
                         reply_ref=reply_ref,
-                        on_thread_known=on_thread_known,
+                        on_thread_known=wrapped_on_thread_known,
                         engine_override=engine_override,
                     )
                 finally:
                     await cfg.client.send_typing(room_id, typing=False)
 
             async def run_thread_job(job: ThreadJob) -> None:
+                session_scope = session_scopes_by_msg.pop(
+                    (str(job.chat_id), str(job.user_msg_id)),
+                    None,
+                )
                 await run_job(
                     str(job.chat_id),
                     str(job.user_msg_id),
@@ -355,6 +424,9 @@ async def run_main_loop(
                     job.resume_token,
                     job.context,
                     None,
+                    scheduler.note_thread_known,
+                    None,
+                    session_scope,
                 )
 
             scheduler = ThreadScheduler(task_group=tg, run_job=run_thread_job)
@@ -381,6 +453,11 @@ async def run_main_loop(
                 room_id = msg.room_id
                 event_id = msg.event_id
                 reply_to = msg.reply_to_event_id
+                session_scope = _SessionScope(
+                    room_id=room_id,
+                    sender=msg.sender,
+                    thread_root_event_id=msg.thread_root_event_id,
+                )
                 reply_ref = (
                     MessageRef(channel_id=room_id, message_id=reply_to)
                     if reply_to is not None
@@ -492,16 +569,46 @@ async def run_main_loop(
                         MessageRef(channel_id=room_id, message_id=reply_to)
                     )
                     if running_task is not None:
+
+                        async def enqueue_resume_with_scope(
+                            queued_room_id: str,
+                            queued_event_id: str,
+                            queued_text: str,
+                            queued_resume: ResumeToken,
+                            queued_context,
+                            _session_scope: _SessionScope = session_scope,
+                            _thread_root_event_id: str
+                            | None = msg.thread_root_event_id,
+                        ) -> None:
+                            session_scopes_by_msg[(queued_room_id, queued_event_id)] = (
+                                _session_scope
+                            )
+                            await scheduler.enqueue_resume(
+                                queued_room_id,
+                                queued_event_id,
+                                queued_text,
+                                queued_resume,
+                                queued_context,
+                                _thread_root_event_id,
+                            )
+
                         tg.start_soon(
                             _send_with_resume,
                             cfg,
-                            scheduler.enqueue_resume,
+                            enqueue_resume_with_scope,
                             running_task,
                             room_id,
                             event_id,
                             text,
                         )
                         continue
+
+                if resume_token is None:
+                    resume_token = await _lookup_session_resume(
+                        cfg=cfg,
+                        scope=session_scope,
+                        engine=engine_override,
+                    )
 
                 if resume_token is None:
                     tg.start_soon(
@@ -514,16 +621,17 @@ async def run_main_loop(
                         reply_ref,
                         scheduler.note_thread_known,
                         engine_override,
+                        session_scope,
                     )
                 else:
-                    # TODO: Scheduler expects int IDs (Telegram), but Matrix uses str
-                    # This requires architectural fix - see plan for generic scheduler design
+                    session_scopes_by_msg[(room_id, event_id)] = session_scope
                     await scheduler.enqueue_resume(
-                        room_id,  # str, but expects int
-                        event_id,  # str, but expects int
+                        room_id,
+                        event_id,
                         text,
                         resume_token,
                         context,
+                        msg.thread_root_event_id,
                     )
 
     finally:

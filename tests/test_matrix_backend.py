@@ -9,6 +9,7 @@ import pytest
 from takopi.config import ConfigError
 from takopi_matrix.backend import (
     build_file_download_config,
+    build_session_mode_config,
     build_voice_transcription_config,
     validate_matrix_config,
 )
@@ -418,3 +419,23 @@ class TestMatrixBackend:
             transport_config="not a dict", _config_path=Path("test.toml")
         )
         assert result is None
+
+
+class TestSessionModeConfig:
+    """Test session mode config builder."""
+
+    def test_default_chat(self) -> None:
+        config = {}
+        assert build_session_mode_config(config) == "chat"
+
+    def test_chat_explicit(self) -> None:
+        config = {"session_mode": "chat"}
+        assert build_session_mode_config(config) == "chat"
+
+    def test_stateless_explicit(self) -> None:
+        config = {"session_mode": "stateless"}
+        assert build_session_mode_config(config) == "stateless"
+
+    def test_invalid_falls_back_to_chat(self) -> None:
+        config = {"session_mode": "invalid"}
+        assert build_session_mode_config(config) == "chat"

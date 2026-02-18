@@ -35,6 +35,7 @@ class MatrixIncomingMessage:
     event_id: str
     sender: str
     text: str
+    thread_root_event_id: str | None = None
     reply_to_event_id: str | None = None
     reply_to_text: str | None = None
     formatted_body: str | None = None

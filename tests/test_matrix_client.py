@@ -661,6 +661,32 @@ def test_parse_room_message_with_reply() -> None:
     assert result.reply_to_event_id == "$prev:example.org"
 
 
+def test_parse_room_message_with_thread_root() -> None:
+    """Thread root metadata is extracted."""
+    event = FakeRoomMessageText(
+        source={
+            "content": {
+                "m.relates_to": {
+                    "rel_type": "m.thread",
+                    "event_id": "$threadroot:example.org",
+                    "m.in_reply_to": {"event_id": "$prev:example.org"},
+                }
+            }
+        }
+    )
+
+    result = parse_room_message(
+        event=event,
+        room_id=MATRIX_ROOM_ID,
+        allowed_room_ids={MATRIX_ROOM_ID},
+        own_user_id=MATRIX_USER_ID,
+    )
+
+    assert result is not None
+    assert result.thread_root_event_id == "$threadroot:example.org"
+    assert result.reply_to_event_id == "$prev:example.org"
+
+
 def test_parse_room_media_image() -> None:
     """Image attachments are parsed."""
     event = FakeRoomMessageImage()

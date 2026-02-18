@@ -5,15 +5,20 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
+from typing import Literal
 
 from takopi.api import ExecBridgeConfig, TransportRuntime
 
 from ..files import MAX_FILE_SIZE
 
 if TYPE_CHECKING:
+    from ..chat_sessions import MatrixChatSessionStore
     from ..client import MatrixClient
     from ..room_prefs import RoomPrefsStore
     from ..room_projects import RoomProjectMap
+    from ..thread_state import MatrixThreadStateStore
+
+SessionMode = Literal["stateless", "chat"]
 
 
 @dataclass(frozen=True)
@@ -45,6 +50,9 @@ class MatrixBridgeConfig:
     voice_transcription: MatrixVoiceTranscriptionConfig | None = None
     file_download: MatrixFileDownloadConfig | None = None
     send_startup_message: bool = True
+    session_mode: SessionMode = "chat"
     room_prefs: RoomPrefsStore | None = None
+    chat_sessions: MatrixChatSessionStore | None = None
+    thread_state: MatrixThreadStateStore | None = None
     room_project_map: RoomProjectMap | None = None
     config_path: Path | None = None

@@ -27,6 +27,18 @@ def _extract_reply_to(content: dict[str, Any]) -> str | None:
     return event_id if isinstance(event_id, str) else None
 
 
+def _extract_thread_root(content: dict[str, Any]) -> str | None:
+    """Extract Matrix thread root event ID from m.relates_to."""
+    relates_to = content.get("m.relates_to")
+    if not isinstance(relates_to, dict):
+        return None
+    rel_type = relates_to.get("rel_type")
+    if rel_type != "m.thread":
+        return None
+    event_id = relates_to.get("event_id")
+    return event_id if isinstance(event_id, str) else None
+
+
 def _parse_event_common(
     event: Any,
     room_id: str,
@@ -74,6 +86,7 @@ def _parse_event_common(
         "source": source if isinstance(source, dict) else None,
         "content": content,
         "reply_to_event_id": reply_to_event_id,
+        "thread_root_event_id": _extract_thread_root(content),
     }
 
 
@@ -126,6 +139,7 @@ def parse_room_message(
         event_id=common["event_id"],
         sender=common["sender"],
         text=body,
+        thread_root_event_id=common["thread_root_event_id"],
         reply_to_event_id=common["reply_to_event_id"],
         reply_to_text=None,
         formatted_body=formatted_body,
@@ -178,6 +192,7 @@ def parse_room_media(
         event_id=common["event_id"],
         sender=common["sender"],
         text="",
+        thread_root_event_id=common["thread_root_event_id"],
         reply_to_event_id=common["reply_to_event_id"],
         reply_to_text=None,
         attachments=[attachment],
@@ -224,6 +239,7 @@ def parse_room_audio(
         event_id=common["event_id"],
         sender=common["sender"],
         text="",
+        thread_root_event_id=common["thread_root_event_id"],
         reply_to_event_id=common["reply_to_event_id"],
         reply_to_text=None,
         voice=voice,

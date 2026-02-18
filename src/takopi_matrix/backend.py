@@ -17,14 +17,17 @@ from .bridge import (
     MatrixBridgeConfig,
     MatrixFileDownloadConfig,
     MatrixPresenter,
+    SessionMode,
     MatrixTransport,
     MatrixVoiceTranscriptionConfig,
     run_main_loop,
 )
+from .chat_sessions import MatrixChatSessionStore, resolve_chat_sessions_path
 from .client import MatrixClient
 from .onboarding import check_setup, interactive_setup
 from .room_prefs import RoomPrefsStore, resolve_prefs_path
 from .room_projects import build_room_project_map
+from .thread_state import MatrixThreadStateStore, resolve_thread_state_path
 
 
 def _get_crypto_store_path() -> Path:
@@ -75,6 +78,13 @@ def build_file_download_config(
         enabled=enabled,
         max_size_bytes=max_size,
     )
+
+
+def build_session_mode_config(transport_config: dict[str, object]) -> SessionMode:
+    raw = transport_config.get("session_mode")
+    if isinstance(raw, str) and raw.strip().lower() == "stateless":
+        return "stateless"
+    return "chat"
 
 
 def validate_matrix_config(
@@ -241,10 +251,13 @@ class MatrixBackend(TransportBackend):
         voice_transcription = build_voice_transcription_config(config)
         file_download = build_file_download_config(config)
         send_startup_message = bool(config.get("send_startup_message", True))
+        session_mode = build_session_mode_config(config)
 
         # Initialize room preferences store for per-room engine defaults
         room_prefs_path = resolve_prefs_path(config_path)
         room_prefs = RoomPrefsStore(room_prefs_path)
+        chat_sessions = MatrixChatSessionStore(resolve_chat_sessions_path(config_path))
+        thread_state = MatrixThreadStateStore(resolve_thread_state_path(config_path))
 
         # Build room-to-project mapping from config
         room_project_map = build_room_project_map(config, runtime)
@@ -259,7 +272,10 @@ class MatrixBackend(TransportBackend):
             voice_transcription=voice_transcription,
             file_download=file_download,
             send_startup_message=send_startup_message,
+            session_mode=session_mode,
             room_prefs=room_prefs,
+            chat_sessions=chat_sessions,
+            thread_state=thread_state,
             room_project_map=room_project_map,
             config_path=config_path,
         )

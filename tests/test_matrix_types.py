@@ -79,6 +79,7 @@ def test_matrix_incoming_message_minimal() -> None:
     assert msg.transport == "matrix"
     assert msg.room_id == "!room:example.org"
     assert msg.text == "hello"
+    assert msg.thread_root_event_id is None
     assert msg.reply_to_event_id is None
     assert msg.attachments is None
     assert msg.voice is None
@@ -94,6 +95,7 @@ def test_matrix_incoming_message_full() -> None:
         event_id="$evt:example.org",
         sender="@user:example.org",
         text="hello",
+        thread_root_event_id="$thread:example.org",
         reply_to_event_id="$prev:example.org",
         reply_to_text="previous message",
         formatted_body="<p>hello</p>",
@@ -101,6 +103,7 @@ def test_matrix_incoming_message_full() -> None:
         voice=voice,
         raw={"source": "test"},
     )
+    assert msg.thread_root_event_id == "$thread:example.org"
     assert msg.reply_to_event_id == "$prev:example.org"
     assert msg.reply_to_text == "previous message"
     assert msg.formatted_body == "<p>hello</p>"
